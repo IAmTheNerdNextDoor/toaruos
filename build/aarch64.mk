@@ -6,7 +6,7 @@ ARCH_USER_CFLAGS = -Wno-psabi --sysroot=base
 TARGET=aarch64-unknown-toaru
 
 all: system
-system: misaka-kernel ramdisk.igz bootstub kernel8.img | $(BUILD_KRK)
+system: misaka-kernel ramdisk.igz bootstub kernel8_rpi3.img kernel8_rpi400.img | $(BUILD_KRK)
 
 misaka-kernel: ${KERNEL_ASMOBJS} ${KERNEL_OBJS} kernel/symbols.o kernel/arch/aarch64/link.ld
 	${CC} -g -T kernel/arch/${ARCH}/link.ld ${KERNEL_CFLAGS} -o $@ ${KERNEL_ASMOBJS} ${KERNEL_OBJS} kernel/symbols.o
@@ -24,8 +24,17 @@ RPI400_OBJS += $(patsubst %.S,%.o,$(wildcard kernel/arch/aarch64/rpi400/*.S))
 RPI400_OBJS += kernel/misc/kprintf.o kernel/misc/string.o
 
 kernel/arch/aarch64/rpi400/start.o: misaka-kernel ramdisk.igz
-kernel8.img: ${RPI400_OBJS} kernel/arch/aarch64/rpi400/link.ld
+kernel8_rpi400.img: ${RPI400_OBJS} kernel/arch/aarch64/rpi400/link.ld
 	${CC} -g -T kernel/arch/aarch64/rpi400/link.ld ${KERNEL_CFLAGS} -o $@.elf ${RPI400_OBJS}
+	${OC} $@.elf -O binary $@
+
+RPI3_OBJS  = $(patsubst %.c,%.o,$(wildcard kernel/arch/aarch64/rpi3/*.c))
+RPI3_OBJS += $(patsubst %.S,%.o,$(wildcard kernel/arch/aarch64/rpi3/*.S))
+RPI3_OBJS += kernel/misc/kprintf.o kernel/misc/string.o
+
+kernel/arch/aarch64/rpi3/start.o: misaka-kernel ramdisk.igz
+kernel8_rpi3.img: ${RPI3_OBJS} kernel/arch/aarch64/rpi3/link.ld
+	${CC} -g -T kernel/arch/aarch64/rpi3/link.ld ${KERNEL_CFLAGS} -o $@.elf ${RPI3_OBJS}
 	${OC} $@.elf -O binary $@
 
 QEMU = qemu-system-aarch64
@@ -68,4 +77,3 @@ BUILD_KRK=$(TOOLCHAIN)/local/bin/kuroko
 $(TOOLCHAIN)/local/bin/kuroko: kuroko/src/*.c
 	mkdir -p $(TOOLCHAIN)/local/bin
 	cc -Ikuroko/src -DKRK_BUNDLE_LIBS="BUNDLED(os);BUNDLED(fileio);" -DNO_RLINE -DKRK_STATIC_ONLY -DKRK_DISABLE_THREADS -o "${TOOLCHAIN}/local/bin/kuroko" kuroko/src/*.c kuroko/src/modules/module_os.c kuroko/src/modules/module_fileio.c
-

@@ -34,5 +34,7 @@
 /boot/mbr.sys
 /bootstub
 /.arch
-/kernel8.img
-/kernel8.img.elf
+/kernel8_rpi3.img
+/kernel8_rpi3.img.elf
+/kernel8_rpi400.img
+/kernel8_rpi400.img.elf

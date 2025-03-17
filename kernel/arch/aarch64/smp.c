@@ -22,6 +22,7 @@
 extern process_t * spawn_kidle(int);
 extern void timer_start(void);
 extern void aarch64_processor_data(void);
+extern void rpi_timer_start(void);
 
 static uint32_t cpu_on = 0;
 static int method = 0;
@@ -37,7 +38,7 @@ volatile uintptr_t aarch64_ttbr0      = 0;
 volatile uintptr_t aarch64_ttbr1      = 0;
 volatile uintptr_t aarch64_stack      = 0;
 
-void ap_start(uint64_t core_id) {
+void ap_start(uint64_t core_id, uintptr_t rpi_tag) {
 
 	dprintf("smp: core %zu is online\n", core_id);
 
@@ -56,7 +57,11 @@ void ap_start(uint64_t core_id) {
 	this_core->current_process = this_core->kernel_idle_task;
 	asm volatile ("isb");
 
-	timer_start();
+	if (!rpi_tag){
+	   timer_start();
+	} else {
+	   rpi_timer_start();
+	}
 
 	_smp_mutex = 1;
 	asm volatile ("isb" ::: "memory");

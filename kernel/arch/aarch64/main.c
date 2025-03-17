@@ -198,6 +198,35 @@ void timer_start(void) {
 	gic_regs[543] = 0x07070707;
 }
 
+void rpi_timer_start(void) {
+	/* mask irqs */
+	asm volatile ("msr DAIFSet, #0b1111");
+
+	/* Enable the local timer */
+	set_tick();
+
+	/* This is global, we only need to do this once... */
+	gic_regs[0] = 1;
+
+	/* This is specific to this CPU */
+	gicc_regs[0] = 1;
+	gicc_regs[1] = 0x1ff;
+
+	/* Timer interrupts are private peripherals, so each CPU gets one */
+	gic_regs[64] = 0xFFFFffff; //(1 << TIMER_IRQ);
+	gic_regs[160] = 0xFFFFffff; //(1 << TIMER_IRQ);
+
+	/* These are shared? */
+	gic_regs[65]  = 0xFFFFFFFF;
+	gic_regs[66]  = 0xFFFFFFFF;
+	gic_regs[67]  = 0xFFFFFFFF;
+
+	/* On RPi3, gic_regs[520] breaks stuff.*/
+	// gic_regs[520] = 0x07070707;
+	gic_regs[521] = 0x07070707;
+	gic_regs[543] = 0x07070707;
+}
+
 static volatile uint64_t time_slice_basis = 0; /**< When the last clock update happened */
 static spin_lock_t ticker_lock;
 static void update_clock(void) {
@@ -637,11 +666,11 @@ int kmain(uintptr_t dtb_base, uintptr_t phys_base, uintptr_t rpi_tag) {
 	/* Load MIDR */
 	aarch64_processor_data();
 
-	/* Set up the system virtual timer to produce interrupts for userspace scheduling */
-	timer_start();
-
-	/* Start other cores here */
+	/* Start the normal or RPi timer and other cores here */
 	if (!rpi_tag ){
+	    /* Set up the system virtual timer to produce interrupts for userspace scheduling */
+		timer_start();
+
 		aarch64_smp_start();
 
 		/* Install drivers that may need to sleep here */
@@ -651,6 +680,8 @@ int kmain(uintptr_t dtb_base, uintptr_t phys_base, uintptr_t rpi_tag) {
 		extern void pl011_start(void);
 		pl011_start();
 	} else {
+	    /* Same as timer_start() but made for RPi4/400/3 */
+	    rpi_timer_start();
 
 		extern void rpi_smp_init(void);
 		rpi_smp_init();
@@ -666,4 +697,3 @@ int kmain(uintptr_t dtb_base, uintptr_t phys_base, uintptr_t rpi_tag) {
 
 	return 0;
 }
-
